@@ -13,9 +13,17 @@ struct ContentView: View {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text("Hello from Noe")
+            Text("Hello from Noe 💪")
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.15, green: 0.2, blue: 0.35), Color(red: 0.08, green: 0.12, blue: 0.22)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 }
 
