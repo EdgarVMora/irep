@@ -9,6 +9,7 @@ import Foundation
 import CoreMotion
 import SwiftUI
 import Combine
+import WatchKit
 
 @MainActor
 class MotionManager: ObservableObject {
