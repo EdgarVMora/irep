@@ -50,9 +50,5 @@ playground.xcworkspace
 com.crashlytics.css
 fabric.properties
 
-# Claude / Claude Code
-.claude/
-CLAUDE.md
-
 # VSCode
 .vscode/
