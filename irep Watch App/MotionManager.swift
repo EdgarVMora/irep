@@ -7,78 +7,76 @@
 
 import Foundation
 import CoreMotion
-import SwiftUI
 import Combine
 import WatchKit
 
+// MARK: - MotionManager
+
 @MainActor
-class MotionManager: ObservableObject {
+final class MotionManager: ObservableObject {
     private let motionManager = CMMotionManager()
     private let queue = OperationQueue()
-    
+
     @Published var repCount: Int = 0
     @Published var showCheckmark: Bool = false
-    
-    private var lastAccelerationY: Double = 0
-    private var isMovingUp: Bool = false
-    private let threshold: Double = 0.3 // Sensitivity threshold for wrist raise detection
-    
+
+    /// Flexion/extension angle in degrees (forward/back rotation).
+    @Published var pitch: Double = 0
+    /// Pronation/supination angle in degrees.
+    @Published var roll: Double = 0
+    /// Approximate abduction angle in degrees (lateral rotation).
+    @Published var yaw: Double = 0
+
     init() {
         queue.maxConcurrentOperationCount = 1
     }
-    
+
+    // MARK: - Public Interface
+
     func startTracking() {
-        guard motionManager.isAccelerometerAvailable else {
-            print("Accelerometer is not available")
+        guard motionManager.isDeviceMotionAvailable else {
+            print("Device motion is not available")
             return
         }
-        
-        motionManager.accelerometerUpdateInterval = 0.1 // Update 10 times per second
-        
-        motionManager.startAccelerometerUpdates(to: queue) { [weak self] data, error in
+
+        motionManager.deviceMotionUpdateInterval = 0.05 // Update 20 times per second
+
+        motionManager.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: queue) { [weak self] data, error in
             guard let self = self, let data = data else { return }
-            
+
             Task { @MainActor in
-                self.processMotionData(data)
+                self.processAttitude(data.attitude)
             }
         }
     }
-    
+
     func stopTracking() {
-        motionManager.stopAccelerometerUpdates()
+        motionManager.stopDeviceMotionUpdates()
     }
-    
-    private func processMotionData(_ data: CMAccelerometerData) {
-        let currentY = data.acceleration.y
-        let delta = currentY - lastAccelerationY
-        
-        // Detect upward movement (wrist raise)
-        if delta > threshold && !isMovingUp {
-            isMovingUp = true
-            detectRep()
-        } else if delta < -threshold {
-            isMovingUp = false
-        }
-        
-        lastAccelerationY = currentY
-    }
-    
-    private func detectRep() {
-        repCount += 1
-        showCheckmark = true
-        
-        // Provide haptic feedback
-        WKInterfaceDevice.current().play(.success)
-        
-        // Hide checkmark after 0.5 seconds
-        Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            showCheckmark = false
-        }
-    }
-    
+
     func reset() {
         repCount = 0
         showCheckmark = false
+    }
+
+    // MARK: - Test Seam
+
+    /// Injects attitude values expressed in radians without requiring a live `CMAttitude`.
+    /// For testing only — do not call from production code.
+    func updateAngles(pitchRad: Double, rollRad: Double, yawRad: Double) {
+        applyAngles(pitchRad: pitchRad, rollRad: rollRad, yawRad: yawRad)
+    }
+
+    // MARK: - Private Implementation
+
+    private func processAttitude(_ attitude: CMAttitude) {
+        applyAngles(pitchRad: attitude.pitch, rollRad: attitude.roll, yawRad: attitude.yaw)
+    }
+
+    private func applyAngles(pitchRad: Double, rollRad: Double, yawRad: Double) {
+        let degreesPerRadian = 180 / Double.pi
+        pitch = pitchRad * degreesPerRadian
+        roll  = rollRad  * degreesPerRadian
+        yaw   = yawRad   * degreesPerRadian
     }
 }
